@@ -1,0 +1,34 @@
+# Secrets & environment
+.env
+# Izinkan .env.example sebagai template
+!.env.example
+
+# Airflow runtime
+logs/
+plugins/__pycache__/
+dags/__pycache__/
+include/__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+
+# Airflow DB & configs yang auto-generated
+airflow.db
+airflow.cfg
+standalone_admin_password.txt
+webserver_config.py
+
+# Dataset (file besar, tidak perlu di-repo)
+include/dataset/*.csv
+
+# ETL init scripts (bisa di-generate ulang)
+etl/init-scripts/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python virtual env
+venv/
+.venv/
+env/
