@@ -1,4 +1,4 @@
-# Final Project Data Pipeline — BNI Corpu
+# Final Project Data Pipeline — Ida Bagus Putu Angga Pranidhana
 
 Repo ini berisi materi dan hands-on project **ETL Pipeline dengan Apache Airflow v3 + PostgreSQL** menggunakan Docker Compose.
 
