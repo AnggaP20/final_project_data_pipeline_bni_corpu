@@ -76,7 +76,7 @@ CREATE TABLE IF NOT EXISTS dim_accounts (
     tags                = ["etl", "accounts", "dim", "postgresql"],
     template_searchpath = ["/opt/airflow/include/sql/accounts"],
 )
-def dag_etl_customers():
+def dag_etl_accounts():
 
     # ── Task 1: DDL ───────────────────────────────────────────────────────────
     create_tables_accounts = SQLExecuteQueryOperator(
@@ -85,7 +85,7 @@ def dag_etl_customers():
         sql     = DDL_STATEMENTS,
     )
 
-    # ── Task 2: Extract CSV → stg_customers ──────────────────────────────────
+    # ── Task 2: Extract CSV → stg_accounts ──────────────────────────────────
     @task()
     def extract_load_accounts():
         from airflow.hooks.base import BaseHook
@@ -125,4 +125,4 @@ def dag_etl_customers():
     create_tables_accounts >> extract_load_accounts() >> transform_accounts
 
 
-dag_etl_customers()
+dag_etl_accounts()

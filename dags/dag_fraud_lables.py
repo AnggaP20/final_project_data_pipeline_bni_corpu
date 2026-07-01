@@ -1,12 +1,12 @@
 """
-dag_etl_branches.py
+dag_etl_fraud_labels.py
 =====================
-ETL pipeline: branches.csv → stg_branches → dim_branches
+ETL pipeline: fraud_labels.csv → stg_fraud_labels → dim_fraud_labels
 
 Task flow:
-    create_tables_branches  (SQLExecuteQueryOperator) : DDL stg_branches & dim_branches
-    extract_load_branches   (@task Python)            : baca CSV → stg_branches
-    transform_branches      (SQLExecuteQueryOperator) : stg_branches → dim_branches
+    create_tables_fraud_labels  (SQLExecuteQueryOperator) : DDL stg_fraud_labels & dim_fraud_labels
+    extract_load_fraud_labels   (@task Python)            : baca CSV → stg_fraud_labels
+    transform_fraud_labels      (SQLExecuteQueryOperator) : stg_fraud_labels → dim_fraud_labels
 
 Airflow Connection:
     conn_id = "postgres_etl"  (tipe: Postgres)
@@ -25,42 +25,33 @@ from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator
 # ─── Konstanta ────────────────────────────────────────────────────────────────
 CONN_ID     = "postgres_etl" # <-- ganti dengan koneksi database yang sudah dibuat di airflow
 SOURCE_FILE = os.path.join(
-    os.path.dirname(__file__), "..", "include", "dataset", "branches.csv"
+    os.path.dirname(__file__), "..", "include", "dataset", "accounts.csv"
 )
 
 DDL_STATEMENTS = """
-CREATE TABLE IF NOT EXISTS stg_branches (
-    branch_id       INTEGER,
-    branch_code     VARCHAR(20),
-    branch_name         VARCHAR(150),
-    city            VARCHAR(20),
-    province        VARCHAR(20),
-    region             VARCHAR(20),
-    branch_type             VARCHAR(20),
-    open_date           VARCHAR(20),
-    is_active         VARCHAR(10)
+    CREATE TABLE IF NOT EXISTS stg_fraud_trx (
+    transaction_id    INTEGER,
+    transaction_code  VARCHAR(255),
+    is_fraud          VARCHAR(255),
+    fraud_type        VARCHAR(255),
+    fraud_score       VARCHAR(255),
+    flagged_at        VARCHAR(255)
 );
 
-CREATE TABLE IF NOT EXISTS dim_branches (
-branch_id       INTEGER PRIMARY KEY,
-    branch_code     VARCHAR(20),
-    branch_name         VARCHAR(150),
-    city            VARCHAR(20),
-    province        VARCHAR(20),
-    region             VARCHAR(200),
-    branch_type             VARCHAR(20),
-    open_date           DATE,
-    branch_age          SMALLINT,
-    is_active         BOOLEAN,
-    etl_loaded_at        TIMESTAMP     DEFAULT NOW()
-);
+CREATE TABLE IF NOT EXISTS dim_fraud_trx (
+    transaction_id    INTEGER NOT NULL,
+    transaction_code  VARCHAR(50) NOT NULL,
+    is_fraud          BOOLEAN DEFAULT FALSE,
+    fraud_type        VARCHAR(100),
+    fraud_score       NUMERIC,
+    flagged_at        DATE
+)
 """
-
 
 # ─── DAG ──────────────────────────────────────────────────────────────────────
 @dag(
-    dag_id              = "dag_etl_branches",
-    description         = "ETL branches.csv → stg_branches → dim_branches",
+    dag_id              = "dag_etl_fraud_labels",
+    description         = "ETL fraud_labels.csv → stg_fraud_labels → dim_fraud_labels",
     default_args        = {
         "owner"           : "airflow",
         "retries"         : 1,
@@ -70,21 +61,21 @@ branch_id       INTEGER PRIMARY KEY,
     start_date          = datetime(2025, 1, 1),
     schedule            = None,
     catchup             = False,
-    tags                = ["etl", "branches", "dim", "postgresql"],
-    template_searchpath = ["/opt/airflow/include/sql/branches"],
+    tags                = ["etl", "fraud_labels", "dim", "postgresql"],
+    template_searchpath = ["/opt/airflow/include/sql/fraud_labels"],
 )
-def dag_etl_branches():
+def dag_etl_customers():
 
     # ── Task 1: DDL ───────────────────────────────────────────────────────────
-    create_tables_branches = SQLExecuteQueryOperator(
-        task_id = "create_tables_branches",
+    create_tables_fraud_labels = SQLExecuteQueryOperator(
+        task_id = "create_tables_fraud_labels",
         conn_id = CONN_ID,
         sql     = DDL_STATEMENTS,
     )
 
-    # ── Task 2: Extract CSV → stg_branches ──────────────────────────────────
+    # ── Task 2: Extract CSV → stg_fraud_labels ──────────────────────────────────
     @task()
-    def extract_load_branches():
+    def extract_load_fraud_labels():
         from airflow.hooks.base import BaseHook
 
         conn     = BaseHook.get_connection(CONN_ID)
@@ -97,11 +88,11 @@ def dag_etl_branches():
         df = pd.read_csv(SOURCE_FILE)
 
         with engine.connect() as c:
-            c.execute(text("TRUNCATE TABLE stg_branches"))
+            c.execute(text("TRUNCATE TABLE stg_fraud_labels"))
             c.commit()
 
         df.to_sql(
-            name      = "stg_branches",
+            name      = "stg_fraud_labels",
             con       = engine,
             if_exists = "append",
             index     = False,
@@ -112,14 +103,14 @@ def dag_etl_branches():
         return len(df)
 
     # ── Task 3: Transform stg_customers → dim_customers ──────────────────────
-    transform_branches = SQLExecuteQueryOperator(
-        task_id = "transform_branches",
+    transform_fraud_labels = SQLExecuteQueryOperator(
+        task_id = "transform_fraud_labels",
         conn_id = CONN_ID,
         sql     = "01_transform.sql",
     )
 
     # ── Dependencies ──────────────────────────────────────────────────────────
-    create_tables_branches >> extract_load_branches() >> transform_branches
+    create_tables_fraud_labels >> extract_load_fraud_labels() >> transform_fraud_labels
 
 
-dag_etl_branches()
+dag_etl_fraud_labels()

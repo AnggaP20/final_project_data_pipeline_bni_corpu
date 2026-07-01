@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS dim_channels (
     tags                = ["etl", "channels", "dim", "postgresql"],
     template_searchpath = ["/opt/airflow/include/sql/channels"],
 )
-def dag_etl_customers():
+def dag_etl_channels():
 
     # ── Task 1: DDL ───────────────────────────────────────────────────────────
     create_tables_channels = SQLExecuteQueryOperator(
@@ -75,7 +75,7 @@ def dag_etl_customers():
         sql     = DDL_STATEMENTS,
     )
 
-    # ── Task 2: Extract CSV → stg_customers ──────────────────────────────────
+    # ── Task 2: Extract CSV → stg_channels ──────────────────────────────────
     @task()
     def extract_load_channels():
         from airflow.hooks.base import BaseHook
@@ -115,4 +115,4 @@ def dag_etl_customers():
     create_tables_channels >> extract_load_channels() >> transform_channels
 
 
-dag_etl_customers()
+dag_etl_channels()

@@ -79,7 +79,7 @@ CREATE TABLE IF NOT EXISTS dim_dates (
     tags                = ["etl", "dim_dates", "dim", "postgresql"],
     template_searchpath = ["/opt/airflow/include/sql/dim_dates"],
 )
-def dag_etl_customers():
+def dag_etl_dim_dates():
 
     # ── Task 1: DDL ───────────────────────────────────────────────────────────
     create_tables_dim_dates = SQLExecuteQueryOperator(
@@ -88,7 +88,7 @@ def dag_etl_customers():
         sql     = DDL_STATEMENTS,
     )
 
-    # ── Task 2: Extract CSV → stg_customers ──────────────────────────────────
+    # ── Task 2: Extract CSV → stg_dim_dates ──────────────────────────────────
     @task()
     def extract_load_dim_dates():
         from airflow.hooks.base import BaseHook
@@ -128,4 +128,4 @@ def dag_etl_customers():
     create_tables_dim_dates >> extract_load_dim_dates() >> transform_dim_dates
 
 
-dag_etl_customers()
+dag_etl_dim_dates()
