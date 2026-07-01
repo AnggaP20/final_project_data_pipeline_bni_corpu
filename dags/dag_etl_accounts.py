@@ -1,12 +1,12 @@
 """
-dag_etl_customers.py
+dag_etl_accounts.py
 =====================
-ETL pipeline: customers.csv → stg_customers → dim_customers
+ETL pipeline: accounts.csv → stg_accounts → dim_accounts
 
 Task flow:
-    create_tables  (SQLExecuteQueryOperator) : DDL stg_customers & dim_customers
-    extract_load   (@task Python)            : baca CSV → stg_customers
-    transform      (SQLExecuteQueryOperator) : stg_customers → dim_customers
+    create_tables_accounts  (SQLExecuteQueryOperator) : DDL stg_accounts & dim_accounts
+    extract_load_accounts   (@task Python)            : baca CSV → stg_accounts
+    transform_accounts      (SQLExecuteQueryOperator) : stg_accounts → dim_accounts
 
 Airflow Connection:
     conn_id = "postgres_etl"  (tipe: Postgres)
@@ -25,49 +25,36 @@ from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator
 # ─── Konstanta ────────────────────────────────────────────────────────────────
 CONN_ID     = "postgres_etl" # <-- ganti dengan koneksi database yang sudah dibuat di airflow
 SOURCE_FILE = os.path.join(
-    os.path.dirname(__file__), "..", "include", "dataset", "customers.csv"
+    os.path.dirname(__file__), "..", "include", "dataset", "accounts.csv"
 )
 
 DDL_STATEMENTS = """
-CREATE TABLE IF NOT EXISTS stg_customers (
-    customer_id       INTEGER,
-    customer_code     VARCHAR(20),
-    full_name         VARCHAR(150),
-    gender            VARCHAR(5),
-    birth_date        VARCHAR(20),
-    email             VARCHAR(150),
-    phone             VARCHAR(20),
-    segment           VARCHAR(20),
-    job_segment       VARCHAR(100),
-    city              VARCHAR(100),
-    province          VARCHAR(100),
-    registration_date VARCHAR(20),
-    branch_id         INTEGER,
-    is_active         VARCHAR(10),
-    credit_score      SMALLINT,
-    estimated_salary  NUMERIC(18,2)
+CREATE TABLE IF NOT EXISTS stg_accounts (
+    account_id     INTEGER,
+    account_no     VARCHAR(30),
+    account_type   VARCHAR(50),
+    product_name   VARCHAR(100),
+    currency       CHAR(3),
+    open_date      VARCHAR(10),
+    close_date     VARCHAR(10),
+    status         VARCHAR(20),
+    interest_rate  VARCHAR(10),
+    customer_id    INTEGER,
+    branch_id      INTEGER
 );
 
-CREATE TABLE IF NOT EXISTS dim_customers (
-    customer_id          INTEGER       PRIMARY KEY,
-    customer_code        VARCHAR(20),
-    full_name            VARCHAR(150),
-    gender               VARCHAR(5),
-    birth_date           DATE,
-    email                VARCHAR(150),
-    phone                VARCHAR(20),
-    segment              VARCHAR(20),
-    job_segment          VARCHAR(100),
-    city                 VARCHAR(100),
-    province             VARCHAR(100),
-    registration_date    DATE,
-    branch_id            INTEGER,
-    is_active            BOOLEAN,
-    credit_score         SMALLINT,
-    estimated_salary     NUMERIC(18,2),
-    age                  SMALLINT,
-    credit_score_segment VARCHAR(20),
-    salary_segment       VARCHAR(20),
+CREATE TABLE IF NOT EXISTS dim_accounts (
+    account_id     INTEGER PRIMARY KEY,
+    account_no     VARCHAR(30) UNIQUE NOT NULL,
+    account_type   VARCHAR(50) NOT NULL,
+    product_name   VARCHAR(100) NOT NULL,
+    currency       CHAR(3) NOT NULL,
+    open_date      DATE NOT NULL,
+    close_date     DATE,
+    status         VARCHAR(20) NOT NULL,
+    interest_rate  NUMERIC(5,2),
+    customer_id    INTEGER NOT NULL REFERENCES dim_customers(customer_id),
+    branch_id      INTEGER NOT NULL REFERENCES dim_branches(branch_id),
     etl_loaded_at        TIMESTAMP     DEFAULT NOW()
 );
 """
@@ -75,8 +62,8 @@ CREATE TABLE IF NOT EXISTS dim_customers (
 
 # ─── DAG ──────────────────────────────────────────────────────────────────────
 @dag(
-    dag_id              = "dag_etl_customers",
-    description         = "ETL customers.csv → stg_customers → dim_customers",
+    dag_id              = "dag_etl_accounts",
+    description         = "ETL accounts.csv → stg_accounts → dim_accounts",
     default_args        = {
         "owner"           : "airflow",
         "retries"         : 1,
@@ -86,21 +73,21 @@ CREATE TABLE IF NOT EXISTS dim_customers (
     start_date          = datetime(2025, 1, 1),
     schedule            = None,
     catchup             = False,
-    tags                = ["etl", "customers", "dim", "postgresql"],
-    template_searchpath = ["/opt/airflow/include/sql/customers"],
+    tags                = ["etl", "accounts", "dim", "postgresql"],
+    template_searchpath = ["/opt/airflow/include/sql/accounts"],
 )
 def dag_etl_customers():
 
     # ── Task 1: DDL ───────────────────────────────────────────────────────────
-    create_tables = SQLExecuteQueryOperator(
-        task_id = "create_tables",
+    create_tables_accounts = SQLExecuteQueryOperator(
+        task_id = "create_tables_accounts",
         conn_id = CONN_ID,
         sql     = DDL_STATEMENTS,
     )
 
     # ── Task 2: Extract CSV → stg_customers ──────────────────────────────────
     @task()
-    def extract_load():
+    def extract_load_accounts():
         from airflow.hooks.base import BaseHook
 
         conn     = BaseHook.get_connection(CONN_ID)
@@ -113,11 +100,11 @@ def dag_etl_customers():
         df = pd.read_csv(SOURCE_FILE)
 
         with engine.connect() as c:
-            c.execute(text("TRUNCATE TABLE stg_customers"))
+            c.execute(text("TRUNCATE TABLE stg_accounts"))
             c.commit()
 
         df.to_sql(
-            name      = "stg_customers",
+            name      = "stg_accounts",
             con       = engine,
             if_exists = "append",
             index     = False,
@@ -128,14 +115,14 @@ def dag_etl_customers():
         return len(df)
 
     # ── Task 3: Transform stg_customers → dim_customers ──────────────────────
-    transform = SQLExecuteQueryOperator(
-        task_id = "transform",
+    transform_accounts = SQLExecuteQueryOperator(
+        task_id = "transform_accounts",
         conn_id = CONN_ID,
         sql     = "01_transform.sql",
     )
 
     # ── Dependencies ──────────────────────────────────────────────────────────
-    create_tables >> extract_load() >> transform
+    create_tables_accounts >> extract_load_accounts() >> transform_accounts
 
 
 dag_etl_customers()

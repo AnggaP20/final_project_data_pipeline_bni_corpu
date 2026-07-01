@@ -111,23 +111,23 @@ services:
     restart: always
 
   # PostgreSQL dedicated untuk keperluan ETL (terpisah dari metadata Airflow)
-  postgres-etl:
-    image: postgres:16
-    environment:
-      POSTGRES_USER: ${ETL_POSTGRES_USER:-etl}
-      POSTGRES_PASSWORD: ${ETL_POSTGRES_PASSWORD:-etl}
-      POSTGRES_DB: ${ETL_POSTGRES_DB:-etl_db}
-    ports:
-      - "5433:5432"
-    volumes:
-      - postgres-etl-volume:/var/lib/postgresql/data
-      - ${AIRFLOW_PROJ_DIR:-.}/etl/init-scripts:/docker-entrypoint-initdb.d
-    healthcheck:
-      test: ["CMD", "pg_isready", "-U", "${ETL_POSTGRES_USER:-etl}"]
-      interval: 10s
-      retries: 5
-      start_period: 5s
-    restart: always
+  # postgres-etl:
+  #   image: postgres:16
+  #   environment:
+  #     POSTGRES_USER: ${ETL_POSTGRES_USER:-etl}
+  #     POSTGRES_PASSWORD: ${ETL_POSTGRES_PASSWORD:-etl}
+  #     POSTGRES_DB: ${ETL_POSTGRES_DB:-etl_db}
+  #   ports:
+  #     - "5433:5432"
+  #   volumes:
+  #     - postgres-etl-volume:/var/lib/postgresql/data
+  #     - ${AIRFLOW_PROJ_DIR:-.}/etl/init-scripts:/docker-entrypoint-initdb.d
+  #   healthcheck:
+  #     test: ["CMD", "pg_isready", "-U", "${ETL_POSTGRES_USER:-etl}"]
+  #     interval: 10s
+  #     retries: 5
+  #     start_period: 5s
+  #   restart: always
 
   redis:
     # Redis is limited to 7.2-bookworm due to licencing change
